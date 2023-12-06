@@ -99,10 +99,39 @@ class DrawingRecognizer:
 
         class1Btn = Button(btnFrame, text = self.class1, command= lambda: self.save(1))
         class1Btn.grid(row = 0, column= 0, sticky= W + E)
+        
+        class2Btn = Button(btnFrame, text = self.class2, command= lambda: self.save(2))
+        class2Btn.grid(row = 0, column= 1, sticky= W + E)
+
+        class3Btn = Button(btnFrame, text = self.class3, command= lambda: self.save(3))
+        class3Btn.grid(row = 0, column= 2, sticky= W + E)
+
+        clearBtn = Button(btnFrame, text = "Clear", command=self.clear())
+        clearBtn.grid(row=1, column=1, sticky= W + E)
+
+        trainBtn = Button(btnFrame, text = "Train Model", command=self.TrainModel())
+        trainBtn.grid(row=2, column=0, sticky= W + E)
+
+        saveBtn = Button(btnFrame, text = "Save", command=self.saveModel())
+        saveBtn.grid(row=2, column=1, sticky= W + E)
+
+        loadBtn = Button(btnFrame, text = "Load Model", command=self.loadModel())
+        loadBtn.grid(row=2, column=2, sticky= W + E)
+
+        predictBtn = Button(btnFrame, text = "Predict Model", command=self.predict())
+        predictBtn.grid(row=3, column=1, sticky= W + E)
+
+        loadBtn = Button(btnFrame, text = "Load Model", command=self.loadModel())
+        loadBtn.grid(row=3, column=2, sticky= W + E)
+
+
+
 
     def paint(self, event):
         pass
 
-    def save(self):
+    def save(self, classNumber):
         pass
     
+    def clear(self):
+        pass
