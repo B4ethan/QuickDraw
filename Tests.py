@@ -21,7 +21,7 @@ class DrawingRecognizer:
         self.class1, self.class2, self.class3 = None, None, None #will be the objects
         self.class1Counter, self.class2Counter, self.class3Counter = None, None, None #how many drawing are there in every object
 
-        self.clf = None #ai model
+        self.clf = LinearSVC(dual=False)# Adjust the value as needed#ai model
         self.projectName = None #the name of the directory
         self.root = None #tkinter window
         self.image1 = None #playing with the image
@@ -132,7 +132,7 @@ class DrawingRecognizer:
         self.statusLabel.config(font=("David", 10))
         self.statusLabel.grid(row=4, column=1, sticky= W + E)
 
-        self.root.protocol("WM_DELETE_WINDOW", self.onClose())
+        self.root.protocol("WM_DELETE_WINDOW", self.onClose)
         self.root.attributes("-topmost", True)
         self.root.mainloop()
 
@@ -172,55 +172,67 @@ class DrawingRecognizer:
             self.clf = KNeighborsClassifier()
 
         elif isinstance(self.clf, KNeighborsClassifier):
-            self.clf = LinearSVC()
+            self.clf = LinearSVC(dual=False, max_iter=1000)
 
         self.statusLabel.config(text=f"Current Model: {type(self.clf).__name__}")
 
     def trainModel(self):
-        imgList = np.array([])
-        objectList = np.array([])
+        imgList = []
+        objectList = []
 
         for i in range(1, self.class1Counter):
             img = cv.imread(f"{self.projectName}/{self.class1}/{i}.png")[:, :, 0]
-            img = cv.resize(img, 2500)
-            imgList = np.append(imgList, [img])
-            objectList = np.append(objectList, 1)
+            img = cv.resize(img, (500, 500))  # Fix: Resize using cv.resize
+            imgList.append(img.flatten())  # Fix: Flatten the array
+            objectList.append(1)
 
         for i in range(1, self.class2Counter):
             img = cv.imread(f"{self.projectName}/{self.class2}/{i}.png")[:, :, 0]
-            img = cv.resize(img, 2500)
-            imgList = np.append(imgList, [img])
-            objectList = np.append(objectList, 2)
+            img = cv.resize(img, (500, 500))  # Fix: Resize using cv.resize
+            imgList.append(img.flatten())  # Fix: Flatten the array
+            objectList.append(2)
 
         for i in range(1, self.class3Counter):
             img = cv.imread(f"{self.projectName}/{self.class3}/{i}.png")[:, :, 0]
-            img = cv.resize(img, 2500)
-            imgList = np.append(imgList, [img])
-            objectList = np.append(objectList, 3)
+            img = cv.resize(img, (500, 500))  # Fix: Resize using cv.resize
+            imgList.append(img.flatten())  # Fix: Flatten the array
+            objectList.append(3)
 
-        imgList = imgList.reshape(self.class1Counter - 1 + self.class2Counter -1 + self.class3Counter - 1, 2500)
+        imgList = np.array(imgList)
 
         self.clf.fit(imgList, objectList)
-        messagebox.showinfo("Drawing classfier", "Model is traind!", parent=self.root)
+        messagebox.showinfo("Drawing classifier", "Model is trained!", parent=self.root)
+
 
     def predict(self):
         self.image1.save("temp.png")
         img = PIL.Image.open("temp.png")
         img.thumbnail((50, 50), PIL.Image.Resampling.LANCZOS)
-        img.save("predictedObject", "PNG")
+        img = img.convert("L")  # Convert to grayscale
+        img.save("predictedObject.png", "PNG")
 
-        img = cv.imread("predictedObject.png")[:, :, 0]
-        img = img.reshape(2500)
-        prediction = self.clf.predict([img])
+        try:
+            img = cv.imread("predictedObject.png", cv.IMREAD_GRAYSCALE)
+            if img is None:
+                raise FileNotFoundError("Image file not found or could not be read.")
 
-        if prediction[0] == 1:
-            messagebox.showinfo("Drawing classfier", f"I think that the drawing is a {self.class1}", parent=self.root)
+            img_flattened = img.flatten()  # Flatten the grayscale image
+            img_flattened = img_flattened.reshape(1, -1)  # Reshape to (1, 2500) for KNeighborsClassifier
+            prediction = self.clf.predict(img_flattened)
 
-        elif prediction[0] == 2:
-            messagebox.showinfo("Drawing classfier", f"I think that the drawing is a {self.class2}", parent=self.root)
+            if prediction[0] == 1:
+                messagebox.showinfo("Drawing classifier", f"I think that the drawing is a {self.class1}", parent=self.root)
 
-        elif prediction[0] == 3:
-            messagebox.showinfo("Drawing classfier", f"I think that the drawing is a {self.class3}", parent=self.root)
+            elif prediction[0] == 2:
+                messagebox.showinfo("Drawing classifier", f"I think that the drawing is a {self.class2}", parent=self.root)
+
+            elif prediction[0] == 3:
+                messagebox.showinfo("Drawing classifier", f"I think that the drawing is a {self.class3}", parent=self.root)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error predicting drawing: {str(e)}", parent=self.root)
+
+
 
     def saveModel(self):
         filePath = filedialog.asksaveasfilename(defaultextension="pickle")
