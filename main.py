@@ -20,8 +20,8 @@ class DrawingRecognizer:
         self.model = None
         self.projectName = None
         self.root = None
-        self.image1 = None
-        self.status_label = None
+        self.tempImage = None
+        self.statusLabel = None
         self.canvas = None
         self.draw = None
         self.brush_width = 15
@@ -98,8 +98,8 @@ class DrawingRecognizer:
         self.canvas.pack(expand= tk.YES, fill= tk.BOTH)
         self.canvas.bind("<B1-Motion>", self.paint)
 
-        self.image1 = Image.new("RGB", (WIDTH, HEIGHT), WHITE)
-        self.draw = ImageDraw.Draw(self.image1)
+        self.tempImage = Image.new("RGB", (WIDTH, HEIGHT), WHITE)
+        self.draw = ImageDraw.Draw(self.tempImage)
 
         btnFrame = tk.Frame(self.root)
         btnFrame.pack(fill= tk.X, side= tk.BOTTOM)
@@ -141,9 +141,9 @@ class DrawingRecognizer:
         saveAllBtn = tk.Button(btnFrame, text="Save Everything", command=self.saveAll)
         saveAllBtn.grid(row=3, column=2, sticky=tk.W + tk.E)
 
-        self.status_label = tk.Label(btnFrame, text=f"Current Model: {type(self.model).__name__}")
-        self.status_label.config(font=("Arial", 10))
-        self.status_label.grid(row=4, column=1, sticky=tk.W + tk.E)
+        self.statusLabel = tk.Label(btnFrame, text=f"Current Model: {type(self.model).__name__}")
+        self.statusLabel.config(font=("Arial", 10))
+        self.statusLabel.grid(row=4, column=1, sticky=tk.W + tk.E)
 
         self.root.protocol("WM_DELETE_WINDOW", self.onClose)
         self.root.attributes("-topmost", True)
@@ -156,7 +156,7 @@ class DrawingRecognizer:
         self.draw.rectangle([x1, y2, x2 + self.brush_width, y2 + self.brush_width], fill="black", width=self.brush_width)
 
     def save(self, classNum):
-        self.image1.save("temp.png")
+        self.tempImage.save("temp.png")
         img = PIL.Image.open("temp.png")
         img.thumbnail((50, 50), PIL.Image.ANTIALIAS)
 
@@ -286,7 +286,7 @@ class DrawingRecognizer:
 
     def predict(self):
         # Save the current drawing to a temporary file
-        self.image1.save("temp.png")
+        self.tempImage.save("temp.png")
         img = cv.imread("temp.png", cv.IMREAD_GRAYSCALE)
         img = cv.resize(img, (50, 50))
         img = img.reshape((1, 50, 50, 1))
