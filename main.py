@@ -31,10 +31,10 @@ class DrawingRecognizer:
         self.initGui()
 
     def classesPrompt(self):
-        msg = tk.Tk()
-        msg.withdraw()
+        self.msg = tk.Tk()
+        self.msg.withdraw()
 
-        self.projectName = simpledialog.askstring("Project Name", "Enter project name", parent=msg)
+        self.projectName = simpledialog.askstring("Project Name", "Enter project name", parent=self.msg)
 
         project_data_path = f"{self.projectName}/{self.projectName}.json"
 
@@ -56,9 +56,9 @@ class DrawingRecognizer:
             self.model.load_weights(f"{self.projectName}/{self.projectName}_model_weights.h5")
 
         else:
-            self.class1 = simpledialog.askstring("Object 1", "What is the first object?", parent=msg)
-            self.class2 = simpledialog.askstring("Object 2", "What is the second object?", parent=msg)
-            self.class3 = simpledialog.askstring("Object 3", "What is the third object?", parent=msg)
+            self.class1 = simpledialog.askstring("Object 1", "What is the first object?", parent=self.msg)
+            self.class2 = simpledialog.askstring("Object 2", "What is the second object?", parent=self.msg)
+            self.class3 = simpledialog.askstring("Object 3", "What is the third object?", parent=self.msg)
 
             self.class1Counter = 1
             self.class2Counter = 1
@@ -108,23 +108,17 @@ class DrawingRecognizer:
         btnFrame.columnconfigure(1, weight=1)
         btnFrame.columnconfigure(2, weight=1)
 
-        class1Btn = tk.Button(btnFrame, text=self.class1, command=lambda: self.save(1))
-        class1Btn.grid(row=0, column=0, sticky=tk.W + tk.E)
-
-        class2Btn = tk.Button(btnFrame, text=self.class2, command=lambda: self.save(2))
-        class2Btn.grid(row=0, column=1, sticky=tk.W + tk.E)
-
-        class3Btn = tk.Button(btnFrame, text=self.class3, command=lambda: self.save(3))
-        class3Btn.grid(row=0, column=2, sticky=tk.W + tk.E)
+        saveDrawingBtn = tk.Button(btnFrame, text = "Save Model", command = lambda: self.saveDrawing())
+        saveDrawingBtn.grid(row = 0, column= 1, sticky= tk.W + tk.E)
 
         bminusBtn = tk.Button(btnFrame, text="Brush-", command=self.brushMinus)
-        bminusBtn.grid(row=1, column=0, sticky=tk.W + tk.E)
+        bminusBtn.grid(row=0, column=0, sticky=tk.W + tk.E)
 
         clearBtn = tk.Button(btnFrame, text="Clear", command=self.clear)
         clearBtn.grid(row=1, column=1, sticky=tk.W + tk.E)
 
         bplusBtn = tk.Button(btnFrame, text="Brush+", command=self.brushPlus)
-        bplusBtn.grid(row=1, column=2, sticky=tk.W + tk.E)
+        bplusBtn.grid(row=0, column=2, sticky=tk.W + tk.E)
 
         trainBtn = tk.Button(btnFrame, text="Train Model", command=self.trainModel)
         trainBtn.grid(row=2, column=0, sticky=tk.W + tk.E)
@@ -158,7 +152,7 @@ class DrawingRecognizer:
     def save(self, classNum):
         self.tempImage.save("temp.png")
         img = PIL.Image.open("temp.png")
-        img.thumbnail((50, 50), PIL.Image.ANTIALIAS)
+        img.thumbnail((50, 50), PIL.Image.Resampling.LANCZOS)
 
         if classNum == 1:
             img.save(f"{self.projectName}/{self.class1}/{self.class1Counter}.png", "PNG")
@@ -171,6 +165,38 @@ class DrawingRecognizer:
             self.class3Counter += 1
 
         self.clear() 
+
+    def saveDrawing(self, objectName = None):
+        #popping a question with the name of the object that was drawn, if the class is exists in the data, save the drawing, else, create a new directory with the drawing
+        if objectName == None:
+            objectName = simpledialog.askstring("Drawing saving", "What is the object in the drawing?", parent=self.msg)
+
+        self.tempImage.save("currentDrawing.png")
+        img = PIL.Image.open("currentDrawing.png")
+        img.thumbnail((50, 50), PIL.Image.Resampling.LANCZOS)
+
+        with open("TestLetsGo\\ObjectsList.json", "r") as data:
+            dataList = json.load(data)
+
+        if objectName in dataList: #if the directory exists
+            dataList[objectName] += 1
+            img.save(f"{self.projectName}/{objectName}/{dataList[objectName]}.png", "PNG")
+        
+        else:
+            dataList[objectName] = 1
+            os.chdir(self.projectName)
+            os.mkdir(objectName)
+            os.chdir("..")
+
+            img.save(f"{self.projectName}/{objectName}/{dataList[objectName]}.png", "PNG")
+
+        with open("TestLetsGo\\ObjectsList.json", "w") as data:
+            json.dump(dataList, data)
+
+        messagebox.showinfo("Drawing saving", f"Drawing successfully in directory {objectName}", parent = self.root)
+
+
+    
 
     def brushMinus(self):
         if self.brush_width > 1:
@@ -231,6 +257,37 @@ class DrawingRecognizer:
                 exit()
             self.root.destroy()
             exit()
+
+    def trainModel(self):
+        imgList = []
+        objectList = []
+
+        with open("TestLetsGo\\ObjectsList.json", "r") as data:
+            objectsInfo = json.load(data)
+
+        labelEncoder = {objectName: label for label, objectName in enumerate(objectsInfo.keys())}
+
+        for objectName, objectCounter in objectsInfo.items():
+            for drawingNum in range(1, objectCounter + 1):
+                imgPath = f"{self.projectName}/{objectName}{drawingNum}.png"
+                img = cv.imread(imgPath, cv.IMREAD_GRAYSCALE)
+
+                if img is not None:
+                    img = cv.resize(img, (50, 50))
+                    img = img.reshape((50, 50, 1))
+                    imgList.append(img)
+                    objectList.append(labelEncoder[objectName])
+                else:
+                    print(f"Error loadng image: {imgPath}")
+
+        imgArr = np.array(imgList)
+        objectArr = np.array(objectList)
+
+        imgArr = imgArr / 255.0
+
+        self.model.fit(imgArr, objectArr, epochs = 10)
+
+        messagebox.showinfo("Drawing Classifier", "Model successfully trained!", parent = self.root)        
 
     def trainModel(self):
         img_list = []
@@ -309,7 +366,7 @@ class DrawingRecognizer:
 
         if isCorrect is not None:
             if isCorrect:
-                self.save(predictedClassIndex + 1)
+                self.saveDrawing(predictedClass)
                 messagebox.showinfo("Predicted Object", "Lets gooo I AM SMART!!", parent = self.root)
             else:
                 messagebox.showinfo("Predicted Object", "OOF, sorry, pls press the class of the actual object :(", parent = self.root)
