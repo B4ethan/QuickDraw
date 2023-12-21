@@ -80,7 +80,7 @@ class DrawingRecognizer:
         model.add(layers.MaxPooling2D((2, 2)))
         model.add(layers.Flatten())
         model.add(layers.Dense(64, activation='relu'))
-        model.add(layers.Dense(3, activation='softmax'))  # Adjust output size based on the number of classes
+        model.add(layers.Dense(4, activation='softmax'))  # Adjust output size based on the number of classes
 
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
@@ -193,6 +193,7 @@ class DrawingRecognizer:
         with open("TestLetsGo\\ObjectsList.json", "w") as data:
             json.dump(dataList, data)
 
+        self.clear()
         messagebox.showinfo("Drawing saving", f"Drawing successfully in directory {objectName}", parent = self.root)
 
 
@@ -210,11 +211,6 @@ class DrawingRecognizer:
         self.draw.rectangle([0, 0, 1000, 1000], fill="white")
 
     def saveModel(self):
-        # Save model architecture to a JSON file
-        model_architecture_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
-        with open(model_architecture_path, "w") as json_file:
-            json_file.write(self.model.to_json())
-
         # Save model weights to an HDF5 file
         model_weights_path = filedialog.asksaveasfilename(defaultextension=".h5", filetypes=[("HDF5 files", "*.h5")])
         self.model.save_weights(model_weights_path)
@@ -236,13 +232,6 @@ class DrawingRecognizer:
         messagebox.showinfo("Drawing Classifier", "Model successfully loaded!", parent=self.root)
 
     def saveAll(self):
-        data = {"c1": self.class1, "c2": self.class2, "c3": self.class3, "c1c": self.class1Counter,
-                "c2c": self.class2Counter, "c3c": self.class3Counter, "pname": self.projectName}
-        
-        # Save project data to a JSON file
-        with open(f"{self.projectName}/{self.projectName}.json", "w") as json_file:
-            json.dump(data, json_file)
-
         # Save the model weights separately
         self.model.save_weights(f"{self.projectName}/{self.projectName}_model_weights.h5")
 
@@ -266,10 +255,11 @@ class DrawingRecognizer:
             objectsInfo = json.load(data)
 
         labelEncoder = {objectName: label for label, objectName in enumerate(objectsInfo.keys())}
+        print(labelEncoder)
 
         for objectName, objectCounter in objectsInfo.items():
             for drawingNum in range(1, objectCounter + 1):
-                imgPath = f"{self.projectName}/{objectName}{drawingNum}.png"
+                imgPath = f"{self.projectName}/{objectName}/{drawingNum}.png"
                 img = cv.imread(imgPath, cv.IMREAD_GRAYSCALE)
 
                 if img is not None:
@@ -278,70 +268,25 @@ class DrawingRecognizer:
                     imgList.append(img)
                     objectList.append(labelEncoder[objectName])
                 else:
-                    print(f"Error loadng image: {imgPath}")
+                    print(f"Error loading image: {imgPath}")
 
         imgArr = np.array(imgList)
         objectArr = np.array(objectList)
 
+        print(np.unique(objectArr))
+
         imgArr = imgArr / 255.0
 
-        self.model.fit(imgArr, objectArr, epochs = 10)
-
-        messagebox.showinfo("Drawing Classifier", "Model successfully trained!", parent = self.root)        
-
-    def trainModel(self):
-        img_list = []
-        class_list = []
-
-        for x in range(1, self.class1Counter):
-            imgPath = f"{self.projectName}/{self.class1}/{x}.png"
-            img = cv.imread(imgPath, cv.IMREAD_GRAYSCALE)
-
-            if img is not None:  # Check if the image is successfully loaded
-                img = cv.resize(img, (50, 50))
-                img = img.reshape((50, 50, 1))
-                img_list.append(img)
-                class_list.append(0)  # Assuming class1 is the first class, use 0 as its label
-            else:
-                print(f"Error loading image: {imgPath}")
-
-        for x in range(1, self.class2Counter):
-            imgPath = f"{self.projectName}/{self.class2}/{x}.png"
-            img = cv.imread(imgPath, cv.IMREAD_GRAYSCALE)
-
-            if img is not None:  # Check if the image is successfully loaded
-                img = cv.resize(img, (50, 50))
-                img = img.reshape((50, 50, 1))
-                img_list.append(img)
-                class_list.append(1)  # Assuming class2 is the second class, use 1 as its label
-            else:
-                print(f"Error loading image: {imgPath}")
-
-        for x in range(1, self.class3Counter):
-            imgPath = f"{self.projectName}/{self.class3}/{x}.png"
-            img = cv.imread(imgPath, cv.IMREAD_GRAYSCALE)
-
-            if img is not None:  # Check if the image is successfully loaded
-                img = cv.resize(img, (50, 50))
-                img = img.reshape((50, 50, 1))
-                img_list.append(img)
-                class_list.append(2)  # Assuming class3 is the third class, use 2 as its label
-            else:
-                print(f"Error loading image: {imgPath}")
-
-        img_array = np.array(img_list)
-        class_array = np.array(class_list)
-
-        # Normalize pixel values to be between 0 and 1
-        img_array = img_array / 255.0
-
-        # Train the CNN model
-        self.model.fit(img_array, class_array, epochs=10)  # Adjust epochs as needed
-
-        # Show a message box indicating successful training
+        self.model.fit(imgArr, to_categorical(objectArr), epochs=10)
+        
         messagebox.showinfo("Drawing Classifier", "Model successfully trained!", parent=self.root)
-
+        
+       
     def predict(self):
+
+        with open("TestLetsGo\\ObjectsList.json", "r") as ObjectList:
+            objectNamesList = json.load(ObjectList)
+
         # Save the current drawing to a temporary file
         self.tempImage.save("temp.png")
         img = cv.imread("temp.png", cv.IMREAD_GRAYSCALE)
@@ -352,25 +297,27 @@ class DrawingRecognizer:
         img = img / 255.0
 
         # Make a prediction using the CNN model
-        prediction = self.model.predict(img)
+        prediction = self.model.predict(img)[0]
 
-        # Get the predicted class index
-        predictedClassIndex = np.argmax(prediction)
+        objectPredict = {objectName: prediction[idx] * 100 for idx, objectName in enumerate(objectNamesList.keys())}
 
-        # Map the class index to the actual class label
-        classNames = [self.class1, self.class2, self.class3]
-        predictedClass = classNames[predictedClassIndex]
+        sortedDrawings = sorted(objectPredict.keys(), key=lambda x: objectPredict[x], reverse=True)
+        
+        topThreeGuesse = [(class_name, objectPredict[class_name]) for class_name in sortedDrawings]
 
-        # Show a message box with the predicted class
-        isCorrect = messagebox.askyesno("Predicted Object", f"I think the drawing is {predictedClass}\n am i right?", parent=self.root)
+
+        message = "I think the drawing is:\n"
+        for i, (predictedClass, confidence) in enumerate(topThreeGuesse):
+            message += f"{i+1}. {predictedClass} with {confidence:.2f}% confidence\n"
+
+        isCorrect = messagebox.askyesno("Predicted Object", f"{message}Am I right?", parent=self.root)
 
         if isCorrect is not None:
             if isCorrect:
-                self.saveDrawing(predictedClass)
-                messagebox.showinfo("Predicted Object", "Lets gooo I AM SMART!!", parent = self.root)
+                self.saveDrawing(topThreeGuesse[0][0])
+                messagebox.showinfo("Predicted Object", "Lets gooo I AM SMART!!", parent=self.root)
             else:
-                messagebox.showinfo("Predicted Object", "OOF, sorry, pls press the class of the actual object :(", parent = self.root)
-
+                messagebox.showinfo("Predicted Object", "OOF, sorry, pls press the class of the actual object :(", parent=self.root)
 def main():
     DrawingRecognizer()
 
