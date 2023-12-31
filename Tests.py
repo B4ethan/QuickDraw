@@ -12,16 +12,15 @@ import PIL
 import PIL.Image
 import PIL.ImageDraw
 
-#Ai models
-from sklearn.svm import LinearSVC
-from sklearn.neighbors import KNeighborsClassifier
+from tensorflow import keras
+from keras import layers, models
+from keras.utils import to_categorical
 
 class DrawingRecognizer:
     def __init__(self):
         self.class1, self.class2, self.class3 = None, None, None #will be the objects
         self.class1Counter, self.class2Counter, self.class3Counter = None, None, None #how many drawing are there in every object
 
-        self.clf = LinearSVC(dual=False)# Adjust the value as needed#ai model
         self.projectName = None #the name of the directory
         self.root = None #tkinter window
         self.image1 = None #playing with the image
@@ -63,14 +62,23 @@ class DrawingRecognizer:
             self.class2Counter = 1
             self.class3Counter = 1
 
-            self.clf = LinearSVC()
-
             os.mkdir(self.projectName)
             os.chdir(self.projectName)
             os.mkdir(self.class1)
             os.mkdir(self.class2)
             os.mkdir(self.class3)
             os.chdir("..")
+    
+    def initCnnModel(self):
+        model = keras.Sequential([
+            layers.Conv2D(32, (3, 3), activation='relu', input_shape=(50, 50, 1)),
+            layers.MaxPooling2D((2, 2)),
+            layers.Conv2D(64, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
+            layers.Flatten(),
+            layers.Dense(64, activation='relu'),
+            layers.Dense(4, activation='softmax')
+        ])
 
     #graphic buttons
     def initGui(self):
@@ -136,7 +144,6 @@ class DrawingRecognizer:
         self.root.attributes("-topmost", True)
         self.root.mainloop()
 
-
     def paint(self, event):
         x1, y1 = (event.x -1), (event.y -1)
         x2, y2 = (event.x +1), (event.y +1)
@@ -166,15 +173,6 @@ class DrawingRecognizer:
     def clear(self):
         self.canvas.delete("all")
         self.draw.rectangle([0, 0, 1000, 1000], fill="white")
-
-    def changeModel(self):
-        if isinstance(self.clf, LinearSVC):
-            self.clf = KNeighborsClassifier()
-
-        elif isinstance(self.clf, KNeighborsClassifier):
-            self.clf = LinearSVC(dual=False, max_iter=1000)
-
-        self.statusLabel.config(text=f"Current Model: {type(self.clf).__name__}")
 
     def trainModel(self):
         imgList = []
