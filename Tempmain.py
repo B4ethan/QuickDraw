@@ -71,7 +71,7 @@ class DrawingRecognizer:
         btnFrame.columnconfigure(2, weight=1)
 
         saveDrawingBtn = tk.Button(btnFrame, text = "Save Model", command = lambda: self.saveDrawing())
-        saveDrawingBtn.grid(row = 0, column= 1, sticky= tk.W + tk.E)
+        saveDrawingBtn.grid(rnow = 0, column= 1, sticky= tk.W + tk.E)
 
         bminusBtn = tk.Button(btnFrame, text="Brush-", command=self.brushMinus)
         bminusBtn.grid(row=0, column=0, sticky=tk.W + tk.E)

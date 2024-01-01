@@ -30,5 +30,19 @@ class DrawingBoardGraphics:
         self.canvas.pack(expand = tk.YES, fill = tk.BOTH) #button widgets
         self.canvas.bind("<B1-Motion>", self.paint) #drawing canvas
         
+        #a temp image file for every current drawing in the canvas
+        self.currentImage = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.COLOR_WHITE)
+        self.draw = ImageDraw.Draw(self.currentImage)
+
+        self.buttons()
+
+    def buttons(self):
+        btnFrame = tk.Frame(self.root)
+        btnFrame.pack(fill = tk.X, side = tk.BOTTOM)
+
+        btnFrame.columnconfigure(0, weight = 1)
+        btnFrame.columnconfigure(1, weight = 1)
+        btnFrame.columnconfigure(2, weight = 1)
+
     def paint(self):
         pass
